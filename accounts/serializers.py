@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import Token
-from .models import User, DeliveryBoy, Order
+from .models import *
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
@@ -198,3 +198,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"driver_id": 'Driver not found'})
             
         return order
+    
+class MessageSerializer(serializers.ModelSerializer):
+    driver = DeliveryBoySerializer()
+    order = OrderSerializer()
+    model = Message
+    fields = ["id", "message", "order", "driver"]

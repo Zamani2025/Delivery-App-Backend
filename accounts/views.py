@@ -2,9 +2,9 @@ from rest_framework import status, viewsets
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.request import Request
-from .serializers import UserRegisterSerializer, CustomObtainPairedSerializer, ProfileSerializer, OrderSerializer, DeliveryBoySerializer, LoginSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer, LogoutUserSerializer
+from .serializers import *
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import User, Order, DeliveryBoy, OtpTokens, Customer
+from .models import *
 from rest_framework.permissions import IsAuthenticated
 from .utils import send_code_to_user
 import pyotp
@@ -173,13 +173,24 @@ class AllOrders(GenericAPIView):
     queryset = Order.objects.all()
     permission_classes = [IsAuthenticated]
 
-
     def get(self, request:Request):
         user = request.user
         data = Order.objects.filter(user=user)
         serializer = self.serializer_class(data, many=True)
         return Response({"data": serializer.data}, status=status.HTTP_200_OK)
 
+class CancelOrder(GenericAPIView):
+    queryset = Order.objects.all()
+
+    def post(self, request:Request, id):
+        order = self.queryset.get(pk=id)
+        if order.status == "pending":
+            order.status = "cancelled"
+            order.save()
+            return Response(data={"message":"Order cancelled successfully"}, status=status.HTTP_200_OK)
+        elif order.status == "delivered":
+            order.delete()
+            return Response(data={"message":"Order deleted successfully"}, status=status.HTTP_200_OK)
         
 class TrackOrder(GenericAPIView):
     serializer_class = OrderSerializer
@@ -203,26 +214,66 @@ class TrackOrder(GenericAPIView):
             return Response({"message": "Order with this ID does'nt exist"}, status=status.HTTP_404_NOT_FOUND)
 
 class DriverOrders(GenericAPIView):
-    serializer_class = OrderSerializer,
+    serializer_class = OrderSerializer
     queryset = Order.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request:Request):
+        user = request.user
+        delivery_name = DeliveryBoy.objects.get(user=user)
+        data = Order.objects.filter(driver=delivery_name)
+        serializer = self.serializer_class(data, many=True)
+        return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+
+
+
+class ChangeOrderStatus(GenericAPIView):
+    queryset = Order.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    
+    def post(self, request, order_id):
+        user = request.user
+        driver = DeliveryBoy.objects.get(user=user)
+        order = self.queryset.get(id=order_id)
+        if order.status == "pending":
+            order.status = "accepted"
+            order.save()
+            return Response({"message": f"You've started accepted delivery item with the ID of {order.order_id} from {order.user.first_name}"}, status=status.HTTP_200_OK)
+        elif order.status == "accepted":
+            order.status = "in_transit"
+            message = Message.objects.create(
+                order=order,
+                driver=driver,
+                user=order.user,
+                message="Your order is on the way now"
+            )
+            message.save()
+            order.save()
+            return Response({"message": f"You've started your delivery {order.order_id}"}, status=status.HTTP_200_OK)
+        elif order.status == "in_transit": 
+            order.status = "delivered"
+            order.save()
+            return Response({"message": f"You've delivered {order.order_id} to {order.receiver_name}"}, status=status.HTTP_200_OK)
+        elif order.status == "delivered":
+            driver.availability = True
+            driver.save()
+            order.delete()
+            return Response({"message": f"You've deleted the order successfully"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message":"Can not change the status of this order"})
+
+class AllMessages(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = Message.objects.all()
+    serializer_class = MessageSerializer
+
 
     def get(self, request:Request):
         user_data = request.user
-        delivery = DeliveryBoy.objects.get(id=user_data.id)
-        order = self.queryset.filter( status="pending")
-        serializer = self.serializer_class(order, many=True)
+        messages = self.queryset.filter(user=user_data)
+        serializers = MessageSerializer(messages, many=True)
         data = {
-            "data": serializer.data,
-        } 
+            "data": serializers.data
+        }
         return Response(data=data, status=status.HTTP_200_OK)
-
-
-    def post(self, request, order_id):
-        user_data = request.user
-        order = self.queryset.filter(driver=user_data, id=order_id)
-        order.status = "accepted"
-        order.save()
-        return Response({"message": f"You've accept {order.order_id} from {order.user.first_name}"})
-
-
-

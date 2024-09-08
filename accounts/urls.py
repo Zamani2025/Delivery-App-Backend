@@ -19,4 +19,9 @@ urlpatterns = [
     path('drivers/', view=AllDriver.as_view(), name='drivers'),
     path('track-orders/', view=TrackOrder.as_view(), name='track-orders'),
     path('driver-orders/', view=DriverOrders.as_view(), name='driver-orders'),
+    path('cancel-orders/<id>/', view=CancelOrder.as_view(), name='cancel-orders'),
+    path('change-orders/<order_id>/', view=ChangeOrderStatus.as_view(), name='change-orders'),
+
+    
+    path('messages/', view=AllMessages.as_view(), name='messages'),
 ]

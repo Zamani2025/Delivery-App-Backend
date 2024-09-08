@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Order, DeliveryBoy, OtpTokens
+from .models import *
 # Register your models here.
 
 admin.site.register(User)
@@ -17,3 +17,5 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at', 'updated_at')
     search_fields = ('order_id', 'user__firstname', 'package_details')
     ordering = ('-created_at',)
+
+admin.site.register(Message)

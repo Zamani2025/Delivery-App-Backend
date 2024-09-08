@@ -108,3 +108,14 @@ class Order(models.Model):
     
     def __str__(self):
         return f"Order {self.order_id} for {self.user.first_name}"
+    
+class Message(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    driver = models.ForeignKey(DeliveryBoy, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255)
+    created_at = models.DateField(auto_now=True)
+
+
+    def __str__(self):
+        return f"{self.order}"
