@@ -271,7 +271,11 @@ class AllMessages(GenericAPIView):
 
     def get(self, request:Request):
         user_data = request.user
-        messages = self.queryset.filter(user=user_data)
+        try:
+            messages = Message.objects.filter(user=user_data).order_by('-id')
+            print(messages)
+        except Message.DoesNotExist:
+            messages = None
         serializers = MessageSerializer(messages, many=True)
         data = {
             "data": serializers.data

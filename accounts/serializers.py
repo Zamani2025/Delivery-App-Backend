@@ -200,7 +200,10 @@ class OrderSerializer(serializers.ModelSerializer):
         return order
     
 class MessageSerializer(serializers.ModelSerializer):
-    driver = DeliveryBoySerializer()
     order = OrderSerializer()
-    model = Message
-    fields = ["id", "message", "order", "driver"]
+    driver = DeliveryBoySerializer()
+    user = UserSerializer()
+
+    class Meta:
+        model = Message
+        fields = ['id', 'message', 'driver', 'user', 'order', 'created_at']
