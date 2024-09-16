@@ -21,7 +21,10 @@ urlpatterns = [
     path('driver-orders/', view=DriverOrders.as_view(), name='driver-orders'),
     path('cancel-orders/<id>/', view=CancelOrder.as_view(), name='cancel-orders'),
     path('change-orders/<order_id>/', view=ChangeOrderStatus.as_view(), name='change-orders'),
+    path('reject-orders/<order_id>/', view=RejectOrder.as_view(), name='reject-orders'),
+    path('delete-message/<message_id>/', view=DeleteMessage.as_view(), name='delete-message'),
 
     
     path('messages/', view=AllMessages.as_view(), name='messages'),
+    path('fcm-token/', view=SaveFcmToken.as_view(), name='fcm-token'),
 ]

@@ -13,6 +13,9 @@ import string
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
+from fcm_django.models import FCMDevice
+# from firebase_admin.messaging import Message, Notification
 # Create your views here.
 
 class CustomObtainPairedView(TokenObtainPairView):
@@ -184,10 +187,16 @@ class CancelOrder(GenericAPIView):
 
     def post(self, request:Request, id):
         order = self.queryset.get(pk=id)
+        driver = DeliveryBoy.objects.filter(user=order.driver.user).first()
         if order.status == "pending":
             order.status = "cancelled"
             order.save()
             return Response(data={"message":"Order cancelled successfully"}, status=status.HTTP_200_OK)
+        elif order.status == "cancelled":
+            driver.availability = True
+            driver.save()
+            order.delete()
+            return Response(data={"message":"Order deleted successfully"}, status=status.HTTP_200_OK)
         elif order.status == "delivered":
             order.delete()
             return Response(data={"message":"Order deleted successfully"}, status=status.HTTP_200_OK)
@@ -202,7 +211,7 @@ class TrackOrder(GenericAPIView):
             orders = self.queryset.get(order_id=order_id)
             if orders.status == "accepted":
                 return Response({"message": "Order has been accept but not on the way"}, status=status.HTTP_200_OK)
-            elif orders.status == "cancel":
+            elif orders.status == "cancelled":
                 return Response({"message": "Order with this ID has been cancelled"}, status=status.HTTP_200_OK)
             elif orders.status == "pending":
                 return Response({"message": "Order with this ID is still on pending, kindly wait for the driver to accept your order"}, status=status.HTTP_200_OK)
@@ -262,6 +271,44 @@ class ChangeOrderStatus(GenericAPIView):
             return Response({"message": f"You've deleted the order successfully"}, status=status.HTTP_200_OK)
         else:
             return Response({"message":"Can not change the status of this order"})
+        
+class RejectOrder(GenericAPIView):
+    queryset = Order.objects.all()
+    permission_classes = [IsAuthenticated]
+        
+    def post(self, request:Request, order_id):
+
+        user = request.user
+        driver = DeliveryBoy.objects.get(user=user)
+        order = self.queryset.get(id=order_id)
+
+        if order.status == "pending":
+            order.status = "cancelled"
+            message = Message.objects.create(
+                order=order,
+                driver=driver,
+                user=order.user,
+                message=f"Your order with the ID of {order.order_id} has been rejected by {driver.user.first_name} {driver.user.last_name}"
+            )
+            driver.availability = True
+            driver.save()
+            message.save()
+            order.save()
+            return Response({"message": "You have successfully rejected the Order"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Can not reject this Order"}, status=status.HTTP_404_NOT_FOUND)
+        
+class DeleteMessage(GenericAPIView):
+    queryset = Message.objects.all()
+    permission_classes = [IsAuthenticated]
+        
+    def post(self, request:Request, message_id):
+        message = self.queryset.get(id=message_id)
+        message.delete()
+
+        return Response({"message": "Message successfully deleted"}, status=status.HTTP_200_OK)
+
+
 
 class AllMessages(GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -281,3 +328,16 @@ class AllMessages(GenericAPIView):
             "data": serializers.data
         }
         return Response(data=data, status=status.HTTP_200_OK)
+
+
+class SaveFcmToken(GenericAPIView):
+
+    def post(self, request:Request):
+        token = request.POST.get('token')
+        user_type = request.POST.get('user_type')
+
+        user = request.user
+        user.fcm_token = token
+        user.save()
+
+        return Response({'message': "Token saved successfully"}, status=status.HTTP_200_OK)

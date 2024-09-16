@@ -11,6 +11,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=15, null=True, blank=True)
     address = models.CharField(max_length=20, null=True, blank=True)
     user_type = models.CharField(max_length=30, default="customer")
+    fcm_token = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
@@ -110,9 +111,9 @@ class Order(models.Model):
         return f"Order {self.order_id} for {self.user.first_name}"
     
 class Message(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    driver = models.ForeignKey(DeliveryBoy, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    driver = models.ForeignKey(DeliveryBoy, on_delete=models.SET_NULL, null=True)
     message = models.CharField(max_length=255)
     created_at = models.DateField(auto_now=True)
 
